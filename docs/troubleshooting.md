@@ -101,3 +101,20 @@ sudo -u musebot turtlebot-muse-view --no-send --out /tmp/view.png
 | サービスが起動しない（display in use） | 同じ番号の X ディスプレイがすでに使われている。`TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM` と `robot.toml` の `[view] display` を別の番号にそろえる |
 
 CPU 使用率が気になる場合は、`config/rviz/muse_view.rviz` の `Frame Rate`（既定 2）を下げます。Xvfb には GPU がないため、ソフトウェアで描画します。
+
+## インストール時に `status=217/USER` が出る
+
+`turtlebot3-muse-bridge.service` や `turtlebot3-muse-rviz.service` が `code=exited, status=217/USER` で再起動を繰り返す場合は、実行ユーザー `musebot` がまだ作られていません。
+
+```bash
+sudo systemctl stop turtlebot3-muse-bridge turtlebot3-muse-rviz
+sudo adduser --disabled-password --gecos "Muse gadget" musebot
+groups musebot   # sudo が含まれていないこと
+sudo scripts/install.sh --with-bridge --with-viewer
+```
+
+現在の `install.sh` は、`--with-bridge` または `--with-viewer` を指定したときに `musebot` がいなければ、ユニットを登録する前に止まります。
+
+## `Unit musegadget.service not found`
+
+Muse Gadget SDK がまだ導入されていません。README の「2. Muse Gadget SDK の導入」を済ませてから、`--restart` を付けて `install.sh` を実行し直してください。コマンド定義（`/etc/musegadget/commands.d/`）は先に置いておいても問題ありません。

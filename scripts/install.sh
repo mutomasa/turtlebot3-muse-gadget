@@ -28,6 +28,23 @@ done
 
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
 
+SERVICE_USER=musebot   # must match User= in systemd/*.service
+
+require_service_user() {
+  id -u "$SERVICE_USER" >/dev/null 2>&1 && return 0
+  echo "ERROR: user '$SERVICE_USER' does not exist; the systemd units run as this user." >&2
+  echo "  create it (no sudo rights): sudo adduser --disabled-password --gecos \"Muse gadget\" $SERVICE_USER" >&2
+  exit 1
+}
+
+gadget_unit_exists() {
+  systemctl list-unit-files --no-legend musegadget.service 2>/dev/null | grep -q musegadget
+}
+
+if [[ $WITH_BRIDGE -eq 1 || $WITH_VIEWER -eq 1 ]]; then
+  require_service_user
+fi
+
 install -d -m 755 "$PREFIX/lib" "$PREFIX/bin" "$PREFIX/share" "$CMD_DIR" "$CONF_DIR"
 rm -rf "$PREFIX/lib/turtlebot3_muse"
 cp -r "$REPO/src/turtlebot3_muse" "$PREFIX/lib/"
@@ -76,7 +93,12 @@ if [[ $WITH_VIEWER -eq 1 ]]; then
 fi
 
 if [[ $RESTART -eq 1 ]]; then
-  systemctl restart musegadget
-  journalctl -u musegadget -n 20 --no-pager
+  if gadget_unit_exists; then
+    systemctl restart musegadget
+    journalctl -u musegadget -n 20 --no-pager
+  else
+    echo "WARN: musegadget.service not found; install the Muse Gadget SDK first (README step 2)," >&2
+    echo "  then rerun with --restart so it loads $CMD_DIR" >&2
+  fi
 fi
 echo "installed. test as the gadget user: sudo -u musebot $BIN_DIR/turtlebot-muse-status"
