@@ -81,6 +81,34 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 | `robot_pose_old` | TF の時刻が古い |
 | `send_failed` | `musegadget send-user-msg` が失敗した（`send_error` に詳細） |
 
+## `robot.view`
+
+画面なしの RViz2（`turtlebot3-muse-rviz.service`）の画面を 1 枚撮り、Muse チャットへ送ります。Muse チャットは静止画しか扱えないため、呼び出しごとに 1 枚です。
+
+- RViz2 は専用の Xvfb ディスプレイ（既定 `:99`）で、`config/rviz/muse_view.rviz` を使って動きます。デスクトップの RViz2 には触れません。
+- 表示：上から見下ろす正射影で、`base_link` を中心に追従します。グリッド 0.5 m、地図、Nav2 の経路（`/plan`）、ロボットモデル、ロボットの座標軸、LiDAR（ピンク）。
+- 固定フレームは既定で `odom` です。SLAM や AMCL が `map → odom` を出すようになったら、サービスの `TURTLEBOT_MUSE_RVIZ_FIXED_FRAME=map` に変えます。
+- 設定のツールは Interact だけです。Goal や初期位置を送るツールはなく、この RViz2 から ROS 2 へ指令は出ません。
+- 撮影前にロボットの状態（`robot.status` と同じ）を確認し、`online` でなければ説明文に「表示が最新ではない可能性があります」と付けます。
+
+### `state`
+
+| 値 | 意味 |
+| --- | --- |
+| `ok` | 撮影した（送信結果は `sent`） |
+| `viewer_unavailable` | 画面なし RViz2 が動いていない（X ディスプレイがない） |
+| `viewer_not_ready` | 画面が真っ黒など単色で、RViz2 がまだ描画していない。送信しない |
+| `error` | 撮影などが失敗した（`error.code` は `capture_error` など） |
+
+### フィールドと警告
+
+| フィールド | 説明 |
+| --- | --- |
+| `robot_state` | 撮影時のロボットの `state`（`online` など） |
+| `robot_warnings` | そのときの `robot.status` の警告 |
+| `image` | 保存した PNG のパス・サイズ（2 MiB 以下） |
+| `warnings` | `robot_not_online`、`blank_frame`、`send_failed`、`viewer_unavailable` |
+
 ## 常駐ブリッジの IPC
 
 `/run/turtlebot-muse/bridge.sock`（Unix ドメインソケット、モード 0600）で、改行区切りの JSON を 1 往復だけやり取りします。

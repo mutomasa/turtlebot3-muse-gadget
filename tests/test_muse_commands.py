@@ -82,7 +82,7 @@ def test_stdout_is_single_json_object_even_if_collector_prints(capfd, monkeypatc
     assert "noise from python" in err and "noise from native code" in err
 
 
-@pytest.mark.parametrize("name", ["robot.status.json", "robot.map.json"])
+@pytest.mark.parametrize("name", ["robot.status.json", "robot.map.json", "robot.view.json"])
 def test_command_definitions(name):
     spec = json.loads((COMMANDS / name).read_text())
     assert set(spec) == {"description", "exec", "required", "optional", "timeout_ms"}

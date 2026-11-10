@@ -28,6 +28,8 @@ def test_partial_override():
     {"status": {"wait_timeout_s": 0}},
     {"status": {"wait_timeout_s": "4"}},
     {"topics": "not a table"},
+    {"view": {"display": "localhost:99"}},
+    {"view": {"capture_timeout_s": 0}},
 ])
 def test_invalid_config_raises(raw):
     with pytest.raises(ConfigError):

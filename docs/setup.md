@@ -64,13 +64,14 @@ journalctl -u musegadget -n 50 --no-pager
 ## 4. コマンドとブリッジの導入
 
 ```bash
-sudo apt install python3-pil              # robot.map 用
-sudo scripts/install.sh --with-bridge --restart
+sudo apt install python3-pil xvfb xauth ffmpeg   # robot.map / robot.view 用
+sudo scripts/install.sh --with-bridge --with-viewer --restart
 ```
 
 | オプション | 内容 |
 | --- | --- |
 | `--with-bridge` | 常駐ブリッジ `turtlebot3-muse-bridge.service` を導入・有効化・起動 |
+| `--with-viewer` | `robot.view` 用の画面なし RViz2 `turtlebot3-muse-rviz.service` を導入・有効化・起動 |
 | `--restart` | `musegadget` を再起動して、追加したコマンドを読み込ませる |
 
 ブリッジなしでも `robot.status` は動きます（毎回ワンショット購読するため、応答に 1〜5 秒かかります）。
@@ -82,6 +83,7 @@ Gadget と同じユーザーで実行します。
 ```bash
 sudo -u musebot /usr/local/bin/turtlebot-muse-status
 sudo -u musebot /usr/local/bin/turtlebot-muse-bridge-ctl metrics
+sudo -u musebot /usr/local/bin/turtlebot-muse-view --no-send --out /tmp/view.png
 ```
 
 - `turtlebot-muse-status` の `source` が `ros2_bridge` ならブリッジ経由、`ros2_live` ならワンショット購読です。
@@ -91,6 +93,7 @@ sudo -u musebot /usr/local/bin/turtlebot-muse-bridge-ctl metrics
 
 - 「`robot.status` を使って TurtleBot3 Burger の位置、向き、LiDAR の状態を教えて」
 - 「`robot.map` で地図を送って」（`/map` が配信されている場合のみ）
+- 「`robot.view` で RViz2 の画面を見せて」
 
 ## 設定の変更
 
@@ -105,13 +108,22 @@ sudo -u musebot /usr/local/bin/turtlebot-muse-bridge-ctl metrics
 sudo systemctl restart turtlebot3-muse-bridge
 ```
 
+画面なし RViz2 の固定フレームを `map` にする（SLAM や AMCL が動いている場合）：
+
+```bash
+sudo systemctl edit turtlebot3-muse-rviz
+# [Service]
+# Environment=TURTLEBOT_MUSE_RVIZ_FIXED_FRAME=map
+sudo systemctl restart turtlebot3-muse-rviz
+```
+
 ## アンインストール
 
 ```bash
-sudo systemctl disable --now turtlebot3-muse-bridge
-sudo rm -f /etc/systemd/system/turtlebot3-muse-bridge.service
-sudo rm -f /etc/musegadget/commands.d/robot.{status,map}.json
-sudo rm -f /usr/local/bin/turtlebot-muse-{status,map,bridge,bridge-ctl}
+sudo systemctl disable --now turtlebot3-muse-bridge turtlebot3-muse-rviz
+sudo rm -f /etc/systemd/system/turtlebot3-muse-{bridge,rviz}.service
+sudo rm -f /etc/musegadget/commands.d/robot.{status,map,view}.json
+sudo rm -f /usr/local/bin/turtlebot-muse-{status,map,view,bridge,bridge-ctl,rviz}
 sudo rm -rf /opt/turtlebot-muse /etc/turtlebot-muse
 sudo systemctl daemon-reload && sudo systemctl restart musegadget
 ```

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import os
 import sys
 import tempfile
 import time
@@ -15,7 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
-from .cli_common import ParamError, log, read_params, write_json
+from .cli_common import ParamError, log, read_params, write_atomically, write_json
 from .config import DEFAULT_ROBOT_NAME, AppConfig, ConfigError, load_config
 from .map_renderer import encode_png_within, render_map
 from .mock_source import MOCK_SOURCE, mock_map
@@ -52,18 +51,6 @@ def select_collector(mock: bool) -> tuple[MapCollector, str]:
 
 def default_sender(path: Path, message: str, cfg: AppConfig) -> SendResult:
     return send_image(path, message, binary=cfg.muse.binary, timeout_s=cfg.muse.send_timeout_s)
-
-
-def write_atomically(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".turtlebot_map_", suffix=".png")
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
 
 
 def map_info(grid: OccupancyGridData) -> dict[str, Any]:

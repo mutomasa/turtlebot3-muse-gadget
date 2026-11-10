@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Headless, read-only RViz2 on its own Xvfb display for robot.view
+# (run by systemd/turtlebot3-muse-rviz.service; the desktop RViz2 is not touched).
+#
+# Environment (defaults):
+#   TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM=99      Xvfb display number -> :99
+#   TURTLEBOT_MUSE_RVIZ_SIZE=1280x720       screen size
+#   TURTLEBOT_MUSE_RVIZ_FIXED_FRAME=odom    use "map" once SLAM / AMCL provides map -> odom
+#   TURTLEBOT_MUSE_RVIZ_XAUTH=/run/turtlebot-muse-rviz/xauth
+#   TURTLEBOT_MUSE_RVIZ_CONFIG=<share>/muse_view.rviz
+set -euo pipefail
+source "$(dirname "$(readlink -f "$0")")/ros_env.sh"
+
+display_num="${TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM:-99}"
+size="${TURTLEBOT_MUSE_RVIZ_SIZE:-1280x720}"
+fixed_frame="${TURTLEBOT_MUSE_RVIZ_FIXED_FRAME:-odom}"
+xauth="${TURTLEBOT_MUSE_RVIZ_XAUTH:-/run/turtlebot-muse-rviz/xauth}"
+config="${TURTLEBOT_MUSE_RVIZ_CONFIG:-$TURTLEBOT_MUSE_SHARE/muse_view.rviz}"
+
+[[ -f "$config" ]] || { echo "RViz config not found: $config" >&2; exit 1; }
+mkdir -p "$(dirname "$xauth")"
+
+# Software rendering: Xvfb has no GPU. Frame rate is kept low in the config to save CPU.
+export LIBGL_ALWAYS_SOFTWARE=1
+export QT_QPA_PLATFORM=xcb
+
+exec xvfb-run --server-num="$display_num" --auth-file="$xauth" \
+  --server-args="-screen 0 ${size}x24 -nolisten tcp" \
+  rviz2 --fullscreen -d "$config" -f "$fixed_frame"

@@ -74,6 +74,10 @@
 - [ ] 監視メトリクスの残り：TF 成功率、SDK 再接続回数、コマンド失敗率、スナップショット生成時間
 - [x] `systemd/turtlebot3-muse-bridge.service` を作成（`musebot` で実行、`ProtectSystem=strict` などで制限）
 - [ ] 実機環境でブリッジを systemd で起動し、再起動・ロボット停止時の挙動を確認
+- [x] `robot.view`：画面なし RViz2（Xvfb・読取専用設定）の画面を撮影して Muse チャットへ送信。`systemd/turtlebot3-muse-rviz.service` を追加
+  - [x] ROS 2 Jazzy 上で偽データを使い、ロボット追従・LiDAR・Nav2 経路の表示と撮影を E2E 確認
+  - [ ] 実機（bringup 起動中）で `robot.view` を確認
+  - [ ] SLAM / AMCL 稼働時に固定フレームを `map` にして地図の表示を確認
 - [ ] 認可済み要求だけを非同期キューで画像送信
 - [x] 地図生成のテスト（占有値、回転、TF 欠落）
 

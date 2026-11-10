@@ -32,3 +32,12 @@ send_timeout_s = 15.0
 # robot.status はまずここに問い合わせ、応答がなければワンショット購読にフォールバックする。
 socket_path = "/run/turtlebot-muse/bridge.sock"
 request_timeout_s = 1.0
+
+[view]
+# robot.view が撮影する、画面なし RViz2（systemd/turtlebot3-muse-rviz.service）の Xvfb ディスプレイ。
+# display はサービス側の TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM と合わせる。
+display = ":99"
+xauthority = "/run/turtlebot-muse-rviz/xauth"
+ffmpeg = "ffmpeg"
+capture_timeout_s = 5.0
+max_image_bytes = 2097152

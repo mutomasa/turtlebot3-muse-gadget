@@ -33,6 +33,14 @@ if [[ -z "${TURTLEBOT_MUSE_LIB:-}" ]]; then
   fi
 fi
 export PYTHONPATH="${TURTLEBOT_MUSE_LIB}${PYTHONPATH:+:$PYTHONPATH}"
+# Data files (RViz2 config): repository config/ or the installed share/.
+if [[ -z "${TURTLEBOT_MUSE_SHARE:-}" ]]; then
+  if [[ -d "$_tbm_dir/../config/rviz" ]]; then
+    TURTLEBOT_MUSE_SHARE="$(readlink -f "$_tbm_dir/../config/rviz")"
+  else
+    TURTLEBOT_MUSE_SHARE="$TURTLEBOT_MUSE_HOME/share"
+  fi
+fi
 export PYTHONDONTWRITEBYTECODE=1
 
 turtlebot_muse_config_args() {

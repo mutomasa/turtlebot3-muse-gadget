@@ -1,0 +1,41 @@
+[Unit]
+Description=TurtleBot3 Muse headless RViz2 viewer (read-only, for robot.view)
+Documentation=https://github.com/mutomasa/turtlebot3-muse-gadget
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Same unprivileged user as the Muse gadget, so robot.view can read the X auth cookie.
+User=musebot
+Group=musebot
+ExecStart=/opt/turtlebot-muse/bin/turtlebot-muse-rviz
+Restart=on-failure
+RestartSec=5
+
+# /run/turtlebot-muse-rviz holds the X auth cookie (0750, musebot only).
+RuntimeDirectory=turtlebot-muse-rviz
+RuntimeDirectoryMode=0750
+# RViz2 / Qt write settings and caches under $HOME.
+StateDirectory=turtlebot-muse-rviz
+Environment=HOME=/var/lib/turtlebot-muse-rviz
+LogsDirectory=turtlebot-muse
+Environment=ROS_LOG_DIR=/var/log/turtlebot-muse
+Environment=TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM=99
+Environment=TURTLEBOT_MUSE_RVIZ_FIXED_FRAME=odom
+Environment=TURTLEBOT_MUSE_RVIZ_XAUTH=/run/turtlebot-muse-rviz/xauth
+
+# Hardening. The X server socket lives in the shared /tmp/.X11-unix,
+# so /tmp must not be private and must stay writable.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/tmp
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

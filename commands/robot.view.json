@@ -1,0 +1,7 @@
+{
+  "description": "Post a snapshot of the TurtleBot3 RViz2 view (top-down: robot, LiDAR scan, map and Nav2 plan) to this Muse chat. Read-only; does not move the robot. Returns robot_state; if it is not online, say the picture may be out of date.",
+  "exec": ["/usr/local/bin/turtlebot-muse-view"],
+  "required": {},
+  "optional": {},
+  "timeout_ms": 30000
+}

@@ -72,6 +72,22 @@ class BridgeConfig:
 
 
 @dataclass(frozen=True)
+class ViewConfig:
+    """Headless RViz2 viewer (systemd/turtlebot3-muse-rviz.service) captured by robot.view."""
+
+    display: str = ":99"
+    xauthority: str = "/run/turtlebot-muse-rviz/xauth"
+    ffmpeg: str = "ffmpeg"
+    capture_timeout_s: float = 5.0
+    max_image_bytes: int = 2 * 1024 * 1024
+
+    def __post_init__(self) -> None:
+        _require_positive(self, ("capture_timeout_s", "max_image_bytes"))
+        if not self.display.startswith(":") or not self.display[1:].split(".")[0].isdigit():
+            raise ConfigError(f"ViewConfig.display must look like ':99': {self.display!r}")
+
+
+@dataclass(frozen=True)
 class AppConfig:
     robot_name: str = DEFAULT_ROBOT_NAME
     topics: TopicConfig = field(default_factory=TopicConfig)
@@ -79,6 +95,7 @@ class AppConfig:
     map: MapConfig = field(default_factory=MapConfig)
     muse: MuseConfig = field(default_factory=MuseConfig)
     bridge: BridgeConfig = field(default_factory=BridgeConfig)
+    view: ViewConfig = field(default_factory=ViewConfig)
 
 
 _SECTIONS: dict[str, type] = {
@@ -87,6 +104,7 @@ _SECTIONS: dict[str, type] = {
     "map": MapConfig,
     "muse": MuseConfig,
     "bridge": BridgeConfig,
+    "view": ViewConfig,
 }
 
 

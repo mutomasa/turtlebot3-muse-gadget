@@ -7,13 +7,15 @@
 | Muse Gadget（`musegadget`） | `musebot` | 一般ユーザー。sudo なし |
 | `robot.status` / `robot.map` | `musebot`（Gadget から起動） | ROS 2 の購読、`musegadget send-user-msg` |
 | 常駐ブリッジ | `musebot`（systemd） | ROS 2 の購読、`/run/turtlebot-muse` への書き込みだけ |
+| 画面なし RViz2 | `musebot`（systemd） | ROS 2 の購読、Xvfb の表示。X の認証ファイルは `/run/turtlebot-muse-rviz`（0750） |
 
 - Muse SDK は、そのユーザー権限でのシェル実行（`system.run`）とファイル操作を Muse に許可します。`musebot` に sudo を与えず、開発用アカウントで Gadget を動かさないでください。
 - ブリッジの systemd ユニットは `ProtectSystem=strict`、`ProtectHome=read-only`、`NoNewPrivileges=yes` などで書き込み先を制限しています。
 
 ## ロボットを動かさない
 
-- `robot.status`、`robot.map`、ブリッジは**購読だけ**を行い、ROS 2 へは何も publish しません。`/cmd_vel` も使いません。
+- `robot.status`、`robot.map`、`robot.view`、ブリッジは**購読だけ**を行い、ROS 2 へは何も publish しません。`/cmd_vel` も使いません。
+- 画面なし RViz2 の設定は、ツールを Interact だけにしています。2D Goal Pose や 2D Pose Estimate のような publish するツールを持たず、マウスやキーボードの入力もありません。テストで、設定に publish するツールが入っていないことを確認しています。
 - 将来の移動指示（P2）は Nav2 の `NavigateToPose` Action を通し、ユーザーの明示的な承認と、目標地点の検証を必須にします。LLM から `/cmd_vel` を直接出すことはしません。
 - `/cmd_vel` にゼロを送ることは緊急停止の代わりになりません。物理的に止める手段（電源）を常に確保してください。
 - 作業履歴にあるとおり、`/motor_power` を有効にした直後に古い `/cmd_vel` でロボットが動いたことがあります。テストで ROS 2 にデータを流すときは、ロボットと別の `ROS_DOMAIN_ID` を使ってください（本リポジトリの E2E 確認では 77 を使用）。
@@ -21,6 +23,7 @@
 ## ネットワーク
 
 - DDS には認証がありません。同じドメインの LAN 上の端末は、すべてのトピックを読み書きできます。信頼できるネットワークでのみ使ってください。
+- 画面なし RViz2 の Xvfb は `-nolisten tcp` で起動し、X の認証クッキーを使います。
 - ブリッジは TCP ポートを開きません。Unix ドメインソケット（`/run/turtlebot-muse/bridge.sock`、モード 0600、ディレクトリ 0750）だけを使います。
 - ROS Bridge の WebSocket などをインターネットに公開しないでください。
 
@@ -31,7 +34,7 @@
 
 ## プライバシー
 
-- 地図やカメラ画像には、部屋の様子や人が写ることがあります。`robot.map` は Muse チャットへ画像を送ります。送り先と記録の扱いを確認してから使ってください。
+- 地図やカメラ画像には、部屋の様子や人が写ることがあります。`robot.map` と `robot.view` は Muse チャットへ画像を送ります。送り先と記録の扱いを確認してから使ってください。
 - 地図画像は一時ファイル（`$XDG_RUNTIME_DIR` または `/tmp`）に保存し、上書きします。
 
 ## 応答の正確さ

@@ -81,3 +81,23 @@ ls -l /etc/musegadget/commands.d/
 | `robot_pose_unavailable` | `map → base_link` の TF がない。SLAM やローカライゼーション（AMCL）が動いていない |
 | `robot_outside_map` | 地図とロボット位置が合っていない。初期位置の設定を確認 |
 | `robot_pose_old` | TF が更新されていない |
+
+## RViz2 画面（`robot.view`）
+
+```bash
+systemctl status turtlebot3-muse-rviz
+journalctl -u turtlebot3-muse-rviz -n 50 --no-pager
+sudo -u musebot turtlebot-muse-view --no-send --out /tmp/view.png
+```
+
+| 状態・警告 | 原因の候補 |
+| --- | --- |
+| `viewer_unavailable` | `turtlebot3-muse-rviz` が止まっている。`/tmp/.X11-unix/X99` がない |
+| `viewer_not_ready`（`blank_frame`） | RViz2 の起動直後。数秒待ってから再実行 |
+| `capture_error` | `ffmpeg` がない、または `musebot` 以外で実行して X の認証ファイルを読めない |
+| 画像にロボットや LiDAR が出ない | TF（`odom → base_link`）が来ていない。固定フレームの設定を確認 |
+| 地図が出ない | `/map` がない、または固定フレームが `odom` で `map → odom` がない |
+| `robot_not_online` | 画像は撮れたが、ロボットのデータが古い。画面が最新でない可能性がある |
+| サービスが起動しない（display in use） | 同じ番号の X ディスプレイがすでに使われている。`TURTLEBOT_MUSE_RVIZ_DISPLAY_NUM` と `robot.toml` の `[view] display` を別の番号にそろえる |
+
+CPU 使用率が気になる場合は、`config/rviz/muse_view.rviz` の `Frame Rate`（既定 2）を下げます。Xvfb には GPU がないため、ソフトウェアで描画します。
