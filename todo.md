@@ -11,17 +11,17 @@
 - [x] `config/robot.toml`（トピック名、タイムアウト、鮮度閾値）を作成。追加依存を避けるため YAML ではなく TOML（標準ライブラリの `tomllib`）にした。`ROS_DOMAIN_ID` などはラッパーの環境変数で指定
 
 ### ROS 2 通信
-- [ ] Humble（Burger）↔ Jazzy（ワークステーション）間で `/odom` と `/scan` の実メッセージを受信できることを確認
+- [x] Humble（Burger）↔ Jazzy（ワークステーション）間で `/odom` と `/scan` の実メッセージを受信できることを確認（2026-11-10）
 - [ ] `ros2 topic info -v` で各トピックの QoS を記録
-- [ ] `tf2_echo odom base_link` で TF を確認
+- [x] `tf2_echo odom base_link` で TF を確認
 - [x] `scripts/verify_ros2.sh` を作成
 
 ### Muse Gadget SDK
-- [ ] ワークステーションの BLE の有無を確認（なければ BLE 付き Linux 機をガジェットホストにする代替構成を検討）
-- [ ] 非 sudo の専用ユーザー `musebot` を作成
-- [ ] インストーラーの内容を確認したうえで SDK を導入
-- [ ] Muse アプリの Developer mode で `MuseGadgetXXXXXX` をペアリング
-- [ ] `musegadget doctor` と `journalctl -u musegadget` で状態を確認
+- [x] ワークステーションの BLE の有無を確認（内蔵コントローラーで動作）
+- [x] 非 sudo の専用ユーザー `musebot` を作成
+- [x] インストーラーの内容を確認したうえで SDK を導入
+- [x] Muse アプリの Developer mode で `MuseGadgetXXXXXX` をペアリング
+- [x] `musegadget doctor` と `journalctl -u musegadget` で状態を確認
 
 ### `robot.status` の実装
 - [x] `commands/robot.status.json` を作成（`timeout_ms: 10000`）
@@ -51,9 +51,9 @@
 ### 実機検証
 - [x] ROS 2 Jazzy 上で偽の publisher（隔離した `ROS_DOMAIN_ID`）を使い、`online` / `degraded` / `offline` と地図描画を E2E 確認
 - [x] 同じ方法で常駐ブリッジを E2E 確認（応答約 0.25 秒、publisher 停止後に `offline`、ブリッジ停止時にワンショットへフォールバック）
-- [ ] TurtleBot3 の bringup 起動中に `robot.status` が `online` を返すことを確認（2026-11-10 時点では bringup 停止中で、`offline` を正しく返すことのみ確認）
+- [x] TurtleBot3 の bringup 起動中に `robot.status` が `online` を返すことを確認（2026-11-10、bringup 停止中は `offline`）
 - [ ] Gadget 実行ユーザーの権限で `/usr/local/bin/turtlebot-muse-status` を実行し、JSON を確認
-- [ ] Muse から自然言語で `robot.status` を呼び出し、位置・向き・LiDAR 状態が表示されることを確認
+- [x] Muse から自然言語で `robot.status` を呼び出し、`online` が返ることを確認（ブリッジ経由で約 0.25 秒）
 - [ ] LiDAR 停止・ネットワーク断の状態で、古いデータを現在値として返さないことを確認
 - [ ] Gadget サービス再起動後に接続が再確立し、独自コマンドが登録されることを確認
 
@@ -66,7 +66,7 @@
   - [x] 2 MiB 以下に縮小・再圧縮
 - [x] `/map` がないときは明確なエラーを返し、擬似地図を生成しない
 - [x] `musegadget send-user-msg --image` での送信処理を実装（`robot.map` コマンドから送信）
-- [ ] Muse 実機で画像送信を確認
+- [x] Muse 実機で画像送信を確認（`robot.view` を直接実行して送信、チャットに表示）
 - [x] `commands/robot.map.json` を追加
 - [ ] カメラトピックを実機で確認し、存在する場合のみ静止画取得を実装（なければ「未設定」と表示）
 - [x] 常駐ブリッジ（rclpy ノード + Unix domain socket）と状態キャッシュ。`robot.status` はブリッジを優先し、なければワンショット購読にフォールバック
@@ -76,7 +76,8 @@
 - [ ] 実機環境でブリッジを systemd で起動し、再起動・ロボット停止時の挙動を確認
 - [x] `robot.view`：画面なし RViz2（Xvfb・読取専用設定）の画面を撮影して Muse チャットへ送信。`systemd/turtlebot3-muse-rviz.service` を追加
   - [x] ROS 2 Jazzy 上で偽データを使い、ロボット追従・LiDAR・Nav2 経路の表示と撮影を E2E 確認
-  - [ ] 実機（bringup 起動中）で `robot.view` を確認
+  - [x] 実機（bringup 起動中）で `robot.view` の撮影と送信を確認
+  - [ ] Muse のチャットから自然言語で `robot.view` が呼ばれることを確認（初回は呼ばれず、説明文を改善）
   - [ ] SLAM / AMCL 稼働時に固定フレームを `map` にして地図の表示を確認
 - [ ] 認可済み要求だけを非同期キューで画像送信
 - [x] 地図生成のテスト（占有値、回転、TF 欠落）

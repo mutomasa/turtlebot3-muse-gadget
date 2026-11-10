@@ -1,6 +1,8 @@
 {
-  "description": "Post a snapshot of the TurtleBot3 RViz2 view (top-down: robot, LiDAR scan, map and Nav2 plan) to this Muse chat. Read-only; does not move the robot. Returns robot_state; if it is not online, say the picture may be out of date.",
-  "exec": ["/usr/local/bin/turtlebot-muse-view"],
+  "description": "Take a picture of what the TurtleBot3 robot sees right now and post it as an image in this chat: a top-down RViz2 view with the robot, its LiDAR scan, the map and the Nav2 path. Use this whenever the user asks to see, show or look at the robot, its surroundings, its screen, RViz or RViz2, a picture, image, photo or snapshot (e.g. 'show me the robot', 'RViz2の画面を見せて', 'ロボットの様子を画像で'). The image is delivered to the chat by this command itself; you cannot draw it yourself. Read-only; does not move the robot. Returns robot_state; if it is not online, say the picture may be out of date.",
+  "exec": [
+    "/usr/local/bin/turtlebot-muse-view"
+  ],
   "required": {},
   "optional": {},
   "timeout_ms": 30000
