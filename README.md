@@ -1,3 +1,5 @@
+![TurtleBot3 × Muse ガジェットの概要](docs/images/onepager.png)
+
 # TurtleBot3 Muse Gadget
 
 TurtleBot3 Burger を **Muse 上で利用できるロボットガジェット** として接続するための、ROS 2 × Muse Gadget SDK 連携アプリケーションです。
