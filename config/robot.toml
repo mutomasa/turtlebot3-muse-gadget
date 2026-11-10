@@ -1,0 +1,28 @@
+# TurtleBot3 Muse Gadget 設定
+# ROS_DOMAIN_ID や RMW_IMPLEMENTATION はラッパースクリプト（scripts/turtlebot-muse-*）の環境変数で指定する。
+
+robot_name = "TurtleBot3 Burger"
+
+[topics]
+odom = "/odom"
+scan = "/scan"
+battery = "/battery_state"
+map = "/map"
+
+[status]
+wait_timeout_s = 4.0     # ワンショット購読の最大待機時間
+max_age_s = 2.0          # 受信後この秒数を超えたら stale
+max_stamp_skew_s = 5.0   # ヘッダ時刻と壁時計の差がこれを超えたら警告（時刻同期が不明なため鮮度判定には使わない）
+
+[map]
+wait_timeout_s = 5.0
+tf_timeout_s = 2.0
+map_frame = "map"
+base_frame = "base_link"
+transient_local = true   # slam_toolbox / cartographer / map_server は Transient Local で配信する
+max_side_px = 1024
+max_image_bytes = 2097152  # Muse の画像上限 2 MiB
+
+[muse]
+binary = "musegadget"
+send_timeout_s = 15.0

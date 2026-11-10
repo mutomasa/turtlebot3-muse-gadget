@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Muse command wrapper for robot.map: render /map and post it to Muse chat.
+set -euo pipefail
+source "$(dirname "$(readlink -f "$0")")/ros_env.sh"
+mapfile -t config_args < <(turtlebot_muse_config_args)
+out="${XDG_RUNTIME_DIR:-/tmp}/turtlebot_map.png"
+exec "$TURTLEBOT_MUSE_PYTHON" -m turtlebot3_muse.map_cli "${config_args[@]}" --out "$out" --send "$@"

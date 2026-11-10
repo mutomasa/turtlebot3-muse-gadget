@@ -1,0 +1,7 @@
+{
+  "description": "Read the latest TurtleBot3 Burger ROS 2 status (odometry pose in the odom frame, LiDAR minimum distance, battery voltage) without moving the robot. Returns state online/degraded/offline/unknown and warnings; report missing or stale data as unknown, not as facts.",
+  "exec": ["/usr/local/bin/turtlebot-muse-status"],
+  "required": {},
+  "optional": {},
+  "timeout_ms": 10000
+}

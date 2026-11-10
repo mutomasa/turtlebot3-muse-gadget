@@ -1,0 +1,7 @@
+{
+  "description": "Render the TurtleBot3 2D SLAM map (/map) to a PNG with the robot position marker and post it to this Muse chat. Read-only; does not move the robot. If no map is being published, returns state no_map and sends nothing.",
+  "exec": ["/usr/local/bin/turtlebot-muse-map"],
+  "required": {},
+  "optional": {},
+  "timeout_ms": 30000
+}

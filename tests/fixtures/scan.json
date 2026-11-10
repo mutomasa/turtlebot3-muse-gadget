@@ -1,0 +1,6 @@
+{
+  "header": {"stamp": {"sec": 1762732800, "nanosec": 0}, "frame_id": "base_scan"},
+  "range_min": 0.12,
+  "range_max": 3.5,
+  "ranges": [0.0, 0.05, 0.82, 1.5, "inf", "nan", 3.6, 2.0]
+}

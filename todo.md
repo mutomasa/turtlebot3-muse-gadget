@@ -6,14 +6,15 @@
 
 ### リポジトリ
 - [x] リポジトリ `mutomasa/turtlebot3-muse-gadget` を作成し、設計書と README を配置
-- [ ] `pyproject.toml`、`.gitignore`、`LICENSE` を追加
-- [ ] `config/robot.yaml`（`ROS_DOMAIN_ID`、トピック名、鮮度閾値）を作成
+- [x] `pyproject.toml`、`.gitignore` を追加
+- [ ] `LICENSE` を追加（ライセンス未決定）
+- [x] `config/robot.toml`（トピック名、タイムアウト、鮮度閾値）を作成。追加依存を避けるため YAML ではなく TOML（標準ライブラリの `tomllib`）にした。`ROS_DOMAIN_ID` などはラッパーの環境変数で指定
 
 ### ROS 2 通信
 - [ ] Humble（Burger）↔ Jazzy（ワークステーション）間で `/odom` と `/scan` の実メッセージを受信できることを確認
 - [ ] `ros2 topic info -v` で各トピックの QoS を記録
 - [ ] `tf2_echo odom base_link` で TF を確認
-- [ ] `scripts/verify_ros2.sh` を作成
+- [x] `scripts/verify_ros2.sh` を作成
 
 ### Muse Gadget SDK
 - [ ] ワークステーションの BLE の有無を確認（なければ BLE 付き Linux 機をガジェットホストにする代替構成を検討）
@@ -23,30 +24,33 @@
 - [ ] `musegadget doctor` と `journalctl -u musegadget` で状態を確認
 
 ### `robot.status` の実装
-- [ ] `commands/robot.status.json` を作成（`timeout_ms: 10000`）
-- [ ] ラッパー `scripts/turtlebot-muse-status` を作成（`/opt/ros/jazzy/setup.bash` の読み込み、`ROS_DOMAIN_ID=30`、`/usr/bin/python3`）
-- [ ] `scripts/robot_status.py` を作成
-  - [ ] `/odom` と `/scan` をワンショット購読（最大 4 秒待機）
-  - [ ] `/scan` に `qos_profile_sensor_data` を使い、`/odom` は publisher の QoS に合わせる
-  - [ ] 四元数から yaw 角を算出
-  - [ ] LiDAR 最短距離は `range_min <= r <= range_max` かつ有限値に限定し、有効値がなければ `null`
-  - [ ] `state` を `online` / `degraded` / `offline` / `unknown` で判定
-  - [ ] 欠落理由を分類（`timeout`、`no_scan`、`no_odom`、`stale`）
-  - [ ] 受信後の経過時間で鮮度を判定（時刻同期が不明な場合）
-  - [ ] ROS 2 コンテキストを `finally` で必ず終了
-  - [ ] 標準出力には JSON だけを出す
-- [ ] 開発用モックを用意（`source: mock` を明示）
-- [ ] `install.sh` を作成
+- [x] `commands/robot.status.json` を作成（`timeout_ms: 10000`）
+- [x] ラッパー `scripts/turtlebot-muse-status` を作成（`/opt/ros/jazzy/setup.bash`、`ROS_DOMAIN_ID=30`、`RMW_IMPLEMENTATION=rmw_fastrtps_cpp`、`ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET`、`/usr/bin/python3`）
+- [x] `src/turtlebot3_muse/status_cli.py` を作成（設計書の `scripts/robot_status.py` に相当）
+  - [x] `/odom` と `/scan` をワンショット購読（最大 4 秒待機）
+  - [x] `/odom`・`/scan`・`/battery_state` に `qos_profile_sensor_data`（Best Effort は Reliable の publisher とも互換）
+  - [x] `/battery_state` の電圧も返す（`state` の判定には使わない）
+  - [x] 四元数から yaw 角を算出
+  - [x] LiDAR 最短距離は `range_min <= r <= range_max` かつ有限値に限定し、有効値がなければ `null`
+  - [x] `state` を `online` / `degraded` / `offline` / `unknown` で判定
+  - [x] 欠落理由を分類（`timeout`、`no_scan`、`no_odom`、`stale`）
+  - [x] 受信後の経過時間で鮮度を判定（時刻同期が不明な場合）
+  - [x] ROS 2 コンテキストを `finally` で必ず終了
+  - [x] 標準出力には JSON だけを出す
+- [x] 開発用モックを用意（`source: mock` を明示）
+- [x] `install.sh` を作成
 
 ### テスト
-- [ ] `tests/fixtures/odom.json`、`tests/fixtures/scan.json` を用意
-- [ ] JSON 契約テスト（パース可能、必須属性あり、標準出力が JSON のみ）
-- [ ] 四元数→yaw 変換と `frame_id` のテスト
-- [ ] LiDAR の `NaN`・`Inf`・範囲外値のテスト
-- [ ] 両系未着（`offline`/`unknown`）、片系欠落（`degraded`）のテスト
-- [ ] タイムアウトで無限待機しないことのテスト
+- [x] `tests/fixtures/odom.json`、`tests/fixtures/scan.json` を用意
+- [x] JSON 契約テスト（パース可能、必須属性あり、標準出力が JSON のみ）
+- [x] 四元数→yaw 変換と `frame_id` のテスト
+- [x] LiDAR の `NaN`・`Inf`・範囲外値のテスト
+- [x] 両系未着（`offline`/`unknown`）、片系欠落（`degraded`）のテスト
+- [x] タイムアウトで無限待機しないことのテスト
 
 ### 実機検証
+- [x] ROS 2 Jazzy 上で偽の publisher（隔離した `ROS_DOMAIN_ID`）を使い、`online` / `degraded` / `offline` と地図描画を E2E 確認
+- [ ] TurtleBot3 の bringup 起動中に `robot.status` が `online` を返すことを確認（2026-11-10 時点では bringup 停止中で、`offline` を正しく返すことのみ確認）
 - [ ] Gadget 実行ユーザーの権限で `/usr/local/bin/turtlebot-muse-status` を実行し、JSON を確認
 - [ ] Muse から自然言語で `robot.status` を呼び出し、位置・向き・LiDAR 状態が表示されることを確認
 - [ ] LiDAR 停止・ネットワーク断の状態で、古いデータを現在値として返さないことを確認
@@ -54,20 +58,21 @@
 
 ## Phase 1：可視化と監視
 
-- [ ] `robot_map_snapshot.py`：`/map`（OccupancyGrid）を PNG に変換
-  - [ ] unknown / free / occupied を識別
-  - [ ] 原点の回転、解像度、上下反転、地図サイズを考慮
-  - [ ] `map → base_link` の TF でロボット位置と向きを重畳（取得できなければ警告付きでマーカーなし）
-  - [ ] 2 MiB 以下に縮小・再圧縮
-- [ ] `/map` がないときは明確なエラーを返し、擬似地図を生成しない
-- [ ] `musegadget send-user-msg --image` での画像送信を手動で確認
-- [ ] `commands/robot.map.json` を追加
+- [x] `map_cli.py` / `map_renderer.py`：`/map`（OccupancyGrid）を PNG に変換
+  - [x] unknown / free / occupied を識別
+  - [x] 原点の回転、解像度、上下反転、地図サイズを考慮
+  - [x] `map → base_link` の TF でロボット位置と向きを重畳（取得できなければ警告付きでマーカーなし）
+  - [x] 2 MiB 以下に縮小・再圧縮
+- [x] `/map` がないときは明確なエラーを返し、擬似地図を生成しない
+- [x] `musegadget send-user-msg --image` での送信処理を実装（`robot.map` コマンドから送信）
+- [ ] Muse 実機で画像送信を確認
+- [x] `commands/robot.map.json` を追加
 - [ ] カメラトピックを実機で確認し、存在する場合のみ静止画取得を実装（なければ「未設定」と表示）
 - [ ] 常駐ブリッジ（rclpy ノード + Unix domain socket）と状態キャッシュ
 - [ ] 監視メトリクス：受信数、最終受信時刻、鮮度、TF 成功率、SDK 再接続回数、コマンド失敗率、スナップショット生成時間
 - [ ] `systemd/turtlebot3-muse-bridge.service` を作成
 - [ ] 認可済み要求だけを非同期キューで画像送信
-- [ ] 地図生成のテスト（占有値、回転、TF 欠落）
+- [x] 地図生成のテスト（占有値、回転、TF 欠落）
 
 ## Phase 2：ロボットアプリケーションのガジェット
 
@@ -95,4 +100,4 @@
 - [ ] `docs/setup.md`
 - [ ] `docs/troubleshooting.md`
 - [ ] `docs/security.md`
-- [ ] `docs/interfaces.md`
+- [x] `docs/interfaces.md`

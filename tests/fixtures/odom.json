@@ -1,0 +1,7 @@
+{
+  "header": {"stamp": {"sec": 1762732800, "nanosec": 500000000}, "frame_id": "odom"},
+  "child_frame_id": "base_footprint",
+  "pose": {"pose": {"position": {"x": 1.23, "y": 0.45, "z": 0.0},
+                    "orientation": {"x": 0.0, "y": 0.0, "z": 0.7071067811865476, "w": 0.7071067811865476}}},
+  "twist": {"twist": {"linear": {"x": 0.1, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": -0.2}}}
+}

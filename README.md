@@ -4,7 +4,7 @@ TurtleBot3 Burger を **Muse 上で利用できるロボットガジェット** 
 
 別の Ubuntu マシン上の ROS 2 ノードからロボットの状態を読み取り、Muse アプリから自然言語で状態を照会したり、地図やカメラ画像のスナップショットを送信したりします。将来的には Nav2、Spatial Scene Graph、知識グラフとの連携を目指します。
 
-> **ステータス：** 設計段階です。実機・Muse 接続の総合検証はまだ行っていません。詳細は [docs/basic_design.md](docs/basic_design.md) を参照してください。
+> **ステータス：** `robot.status` と `robot.map` を実装済みです。ROS 2 Jazzy 上での動作は確認しましたが、実機 TurtleBot3 と Muse アプリとの接続はまだ検証していません。詳細は [docs/basic_design.md](docs/basic_design.md) を参照してください。
 
 ## 位置づけ
 
@@ -51,18 +51,75 @@ Muse から Ubuntu 上の登録コマンドを呼び出し、ローカルの Pyt
 
 タスクの詳細は [todo.md](todo.md) にまとめています。
 
-## クイックスタート（P0 予定）
+## 実装状況
 
-### 1. ROS 2 の接続確認
+| コマンド | 状態 | 内容 |
+| --- | --- | --- |
+| `robot.status` | 実装済み・ROS 2 Jazzy 上で E2E 確認済み | `/odom`・`/scan`・`/battery_state` をワンショット購読し、状態 JSON を返す（読取専用） |
+| `robot.map` | 実装済み・ROS 2 Jazzy 上で E2E 確認済み | `/map` を PNG 化し、`map → base_link` の TF でロボット位置を重畳して Muse チャットへ送信 |
 
-```bash
-source /opt/ros/jazzy/setup.bash
-export ROS_DOMAIN_ID=30
-ros2 topic echo /odom --once
-ros2 topic echo /scan --once
+Muse アプリとの接続（ペアリング、`send-user-msg` での実送信）と、実機 TurtleBot3 での確認はまだです。
+
+## 構成
+
+```text
+src/turtlebot3_muse/
+  config.py          設定（config/robot.toml）の読み込みと検証
+  models.py          ROS 非依存のデータ型
+  msg_convert.py     ROS メッセージ → データ型
+  status_service.py  鮮度判定・状態分類・応答 JSON の生成
+  ros_adapter.py     rclpy のワンショット購読（読取専用、/cmd_vel は発行しない）
+  map_renderer.py    OccupancyGrid → PNG（2 MiB 以下に圧縮）
+  muse_sender.py     musegadget send-user-msg の呼び出し
+  status_cli.py      robot.status のエントリポイント
+  map_cli.py         robot.map のエントリポイント
+  mock_source.py     開発用モック（出力は必ず source: mock）
+commands/            Muse の commands.d 定義
+scripts/             ラッパー、インストーラー、ROS 2 疎通確認
+config/robot.toml    トピック名・タイムアウト・鮮度閾値
 ```
 
-`topic list` に表示されるだけでは不十分です。実メッセージを受信できることを確認してください。
+応答 JSON の仕様は [docs/interfaces.md](docs/interfaces.md) にあります。
+
+## 開発
+
+```bash
+uv sync
+uv run pytest
+```
+
+ROS 2 なしでもモックで動作を確認できます。
+
+```bash
+uv run python -m turtlebot3_muse.status_cli --mock
+uv run python -m turtlebot3_muse.map_cli --mock --out /tmp/turtlebot_map.png
+```
+
+リポジトリから直接ラッパーを実行すると、ROS 2 Jazzy 環境と `src/` を使います。
+
+```bash
+scripts/turtlebot-muse-status
+scripts/turtlebot-muse-map --no-send --out /tmp/turtlebot_map.png
+```
+
+ラッパーは次の環境変数を既定値で設定します（環境変数または `/etc/turtlebot-muse/env` で上書き可能）。
+
+| 変数 | 既定値 |
+| --- | --- |
+| `ROS_DOMAIN_ID` | `30` |
+| `ROS_LOCALHOST_ONLY` | `0` |
+| `ROS_AUTOMATIC_DISCOVERY_RANGE` | `SUBNET` |
+| `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
+
+## 導入手順
+
+### 1. ROS 2 の受信確認
+
+```bash
+scripts/verify_ros2.sh
+```
+
+`/odom`・`/scan`・`/battery_state` の実メッセージ受信と、`odom → base_link` の TF を確認します。`topic list` に表示されるだけでは不十分です。
 
 ### 2. Muse Gadget SDK の導入
 
@@ -75,17 +132,24 @@ bash install.sh --run-as musebot --sdk-token 'YOUR_SDK_TOKEN'
 - SDK トークンは [Muse Gadget SDK トークン画面](https://gadgets.muse.ai/settings/sdk-tokens) で取得します。**GitHub にコミットしないでください。**
 - `musebot` などの専用ユーザーで動かし、sudo 権限は与えません。
 
-### 3. `robot.status` コマンドの登録
+### 3. コマンドの登録
 
 ```bash
-sudo install -d -m 755 /opt/turtlebot-muse /etc/musegadget/commands.d
-sudo install -m 644 scripts/robot_status.py /opt/turtlebot-muse/robot_status.py
-sudo install -m 755 scripts/turtlebot-muse-status /usr/local/bin/turtlebot-muse-status
-sudo install -m 644 commands/robot.status.json /etc/musegadget/commands.d/robot.status.json
-sudo systemctl restart musegadget
+sudo apt install python3-pil      # robot.map 用
+sudo scripts/install.sh --restart
+sudo -u musebot /usr/local/bin/turtlebot-muse-status
 ```
 
-Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置、向き、LiDAR の状態を教えて」のように指示します。
+インストール先は次のとおりです。
+
+| 内容 | 場所 |
+| --- | --- |
+| Python パッケージ・ラッパー | `/opt/turtlebot-muse/` |
+| コマンド（シンボリックリンク） | `/usr/local/bin/turtlebot-muse-{status,map}` |
+| Muse コマンド定義 | `/etc/musegadget/commands.d/robot.{status,map}.json` |
+| 設定 | `/etc/turtlebot-muse/robot.toml`（既存なら上書きしない） |
+
+Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置、向き、LiDAR の状態を教えて」「`robot.map` で地図を送って」のように指示します。
 
 ### 応答例（例示値）
 
@@ -96,7 +160,8 @@ Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置�
   "state": "online",
   "observed_at": "2026-11-10T00:00:00Z",
   "odom": { "received": true, "frame_id": "odom", "x_m": 1.23, "y_m": 0.45, "yaw_deg": 90.0, "fresh": true },
-  "lidar": { "received": true, "frame_id": "base_scan", "min_distance_m": 0.82, "fresh": true },
+  "lidar": { "received": true, "frame_id": "base_scan", "min_distance_m": 0.82, "valid_points": 380, "total_points": 400, "fresh": true },
+  "battery": { "received": true, "voltage_v": 11.9, "fresh": true },
   "warnings": []
 }
 ```
@@ -113,6 +178,7 @@ Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置�
 ## ドキュメント
 
 - [基本設計書](docs/basic_design.md)
+- [インターフェース仕様](docs/interfaces.md)
 - [タスク一覧](todo.md)
 
 ## 参考資料
