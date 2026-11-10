@@ -7,7 +7,7 @@
 ### リポジトリ
 - [x] リポジトリ `mutomasa/turtlebot3-muse-gadget` を作成し、設計書と README を配置
 - [x] `pyproject.toml`、`.gitignore` を追加
-- [ ] `LICENSE` を追加（ライセンス未決定）
+- [x] `LICENSE` を追加（MIT）
 - [x] `config/robot.toml`（トピック名、タイムアウト、鮮度閾値）を作成。追加依存を避けるため YAML ではなく TOML（標準ライブラリの `tomllib`）にした。`ROS_DOMAIN_ID` などはラッパーの環境変数で指定
 
 ### ROS 2 通信

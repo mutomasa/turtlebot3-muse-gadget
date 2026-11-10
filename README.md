@@ -187,3 +187,7 @@ Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置�
 - [TurtleBot3 公式ドキュメント](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/)
 - [ROS 2 Documentation](https://docs.ros.org/)
 - [Nav2 Documentation](https://docs.nav2.org/)
+
+## ライセンス
+
+[MIT](LICENSE)
