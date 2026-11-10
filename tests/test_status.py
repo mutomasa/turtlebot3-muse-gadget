@@ -31,15 +31,15 @@ def status(collection):
                         now_monotonic_s=NOW_MONO, now_wall_s=NOW_WALL, cfg=CFG)
 
 
-@pytest.mark.parametrize("odom_ok, scan_ok, any_rx, expected", [
+@pytest.mark.parametrize("odom_ok, scan_ok, any_fresh, expected", [
     (True, True, True, "online"),
     (True, False, True, "degraded"),
     (False, True, True, "degraded"),
     (False, False, True, "degraded"),
     (False, False, False, "offline"),
 ])
-def test_classify_state(odom_ok, scan_ok, any_rx, expected):
-    assert classify_state(odom_ok, scan_ok, any_rx) == expected
+def test_classify_state(odom_ok, scan_ok, any_fresh, expected):
+    assert classify_state(odom_ok, scan_ok, any_fresh) == expected
 
 
 def test_freshness_uses_receive_age():
@@ -104,3 +104,10 @@ def test_error_status_is_unknown_with_no_values():
     assert result["state"] == "unknown"
     assert result["error"] == {"code": "collection_error", "message": "x"}
     assert result["odom"]["received"] is False
+
+
+def test_offline_when_everything_received_is_stale():
+    result = status(StatusCollection(odom(received=10.0), scan(received=10.0), battery()))
+    assert result["state"] == "offline"
+    assert {"stale_odom", "stale_scan"} <= set(result["warnings"])
+    assert result["odom"]["fresh"] is False and result["odom"]["age_s"] == 90.0

@@ -4,7 +4,7 @@ TurtleBot3 Burger を **Muse 上で利用できるロボットガジェット** 
 
 別の Ubuntu マシン上の ROS 2 ノードからロボットの状態を読み取り、Muse アプリから自然言語で状態を照会したり、地図やカメラ画像のスナップショットを送信したりします。将来的には Nav2、Spatial Scene Graph、知識グラフとの連携を目指します。
 
-> **ステータス：** `robot.status` と `robot.map` を実装済みです。ROS 2 Jazzy 上での動作は確認しましたが、実機 TurtleBot3 と Muse アプリとの接続はまだ検証していません。詳細は [docs/basic_design.md](docs/basic_design.md) を参照してください。
+> **ステータス：** `robot.status`、`robot.map`、常駐ブリッジを実装済みです。ROS 2 Jazzy 上での動作は確認しましたが、実機 TurtleBot3 と Muse アプリとの接続はまだ検証していません。詳細は [docs/basic_design.md](docs/basic_design.md) を参照してください。
 
 ## 位置づけ
 
@@ -57,6 +57,7 @@ Muse から Ubuntu 上の登録コマンドを呼び出し、ローカルの Pyt
 | --- | --- | --- |
 | `robot.status` | 実装済み・ROS 2 Jazzy 上で E2E 確認済み | `/odom`・`/scan`・`/battery_state` をワンショット購読し、状態 JSON を返す（読取専用） |
 | `robot.map` | 実装済み・ROS 2 Jazzy 上で E2E 確認済み | `/map` を PNG 化し、`map → base_link` の TF でロボット位置を重畳して Muse チャットへ送信 |
+| 常駐ブリッジ | 実装済み・ROS 2 Jazzy 上で E2E 確認済み | トピックを購読し続けて状態をキャッシュし、Unix ソケットで `robot.status` に返す（応答約 0.25 秒）。受信メトリクスも提供 |
 
 Muse アプリとの接続（ペアリング、`send-user-msg` での実送信）と、実機 TurtleBot3 での確認はまだです。
 
@@ -68,13 +69,18 @@ src/turtlebot3_muse/
   models.py          ROS 非依存のデータ型
   msg_convert.py     ROS メッセージ → データ型
   status_service.py  鮮度判定・状態分類・応答 JSON の生成
-  ros_adapter.py     rclpy のワンショット購読（読取専用、/cmd_vel は発行しない）
+  ros_adapter.py     rclpy の購読（読取専用、/cmd_vel は発行しない）
+  topic_monitor.py   最新サンプルと受信メトリクス（スレッド安全）
+  ipc.py             Unix ソケット上の JSON 要求・応答
+  bridge.py          常駐ブリッジ（status / metrics / ping）
+  bridge_client.py   ブリッジへの問い合わせ（運用者向け）
   map_renderer.py    OccupancyGrid → PNG（2 MiB 以下に圧縮）
   muse_sender.py     musegadget send-user-msg の呼び出し
   status_cli.py      robot.status のエントリポイント
   map_cli.py         robot.map のエントリポイント
   mock_source.py     開発用モック（出力は必ず source: mock）
 commands/            Muse の commands.d 定義
+systemd/             常駐ブリッジの systemd ユニット
 scripts/             ラッパー、インストーラー、ROS 2 疎通確認
 config/robot.toml    トピック名・タイムアウト・鮮度閾値
 ```
@@ -107,7 +113,6 @@ scripts/turtlebot-muse-map --no-send --out /tmp/turtlebot_map.png
 | 変数 | 既定値 |
 | --- | --- |
 | `ROS_DOMAIN_ID` | `30` |
-| `ROS_LOCALHOST_ONLY` | `0` |
 | `ROS_AUTOMATIC_DISCOVERY_RANGE` | `SUBNET` |
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
 
@@ -132,20 +137,24 @@ bash install.sh --run-as musebot --sdk-token 'YOUR_SDK_TOKEN'
 - SDK トークンは [Muse Gadget SDK トークン画面](https://gadgets.muse.ai/settings/sdk-tokens) で取得します。**GitHub にコミットしないでください。**
 - `musebot` などの専用ユーザーで動かし、sudo 権限は与えません。
 
-### 3. コマンドの登録
+### 3. コマンドとブリッジの登録
 
 ```bash
 sudo apt install python3-pil      # robot.map 用
-sudo scripts/install.sh --restart
+sudo scripts/install.sh --with-bridge --restart
 sudo -u musebot /usr/local/bin/turtlebot-muse-status
+sudo -u musebot /usr/local/bin/turtlebot-muse-bridge-ctl metrics
 ```
+
+`--with-bridge` を付けると常駐ブリッジ（`turtlebot3-muse-bridge.service`）も導入します。ブリッジがなくても `robot.status` はワンショット購読で動きます。詳しくは [docs/setup.md](docs/setup.md) を参照してください。
 
 インストール先は次のとおりです。
 
 | 内容 | 場所 |
 | --- | --- |
 | Python パッケージ・ラッパー | `/opt/turtlebot-muse/` |
-| コマンド（シンボリックリンク） | `/usr/local/bin/turtlebot-muse-{status,map}` |
+| コマンド（シンボリックリンク） | `/usr/local/bin/turtlebot-muse-{status,map,bridge,bridge-ctl}` |
+| 常駐ブリッジ | `/etc/systemd/system/turtlebot3-muse-bridge.service`、ソケット `/run/turtlebot-muse/bridge.sock` |
 | Muse コマンド定義 | `/etc/musegadget/commands.d/robot.{status,map}.json` |
 | 設定 | `/etc/turtlebot-muse/robot.toml`（既存なら上書きしない） |
 
@@ -178,7 +187,10 @@ Muse アプリでは「`robot.status` を使って TurtleBot3 Burger の位置�
 ## ドキュメント
 
 - [基本設計書](docs/basic_design.md)
+- [セットアップ手順](docs/setup.md)
 - [インターフェース仕様](docs/interfaces.md)
+- [トラブルシューティング](docs/troubleshooting.md)
+- [セキュリティと安全性](docs/security.md)
 - [タスク一覧](todo.md)
 
 ## 参考資料

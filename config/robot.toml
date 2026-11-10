@@ -26,3 +26,9 @@ max_image_bytes = 2097152  # Muse の画像上限 2 MiB
 [muse]
 binary = "musegadget"
 send_timeout_s = 15.0
+
+[bridge]
+# 常駐ブリッジ（systemd/turtlebot3-muse-bridge.service）の Unix ソケット。
+# robot.status はまずここに問い合わせ、応答がなければワンショット購読にフォールバックする。
+socket_path = "/run/turtlebot-muse/bridge.sock"
+request_timeout_s = 1.0

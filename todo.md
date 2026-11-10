@@ -50,6 +50,7 @@
 
 ### 実機検証
 - [x] ROS 2 Jazzy 上で偽の publisher（隔離した `ROS_DOMAIN_ID`）を使い、`online` / `degraded` / `offline` と地図描画を E2E 確認
+- [x] 同じ方法で常駐ブリッジを E2E 確認（応答約 0.25 秒、publisher 停止後に `offline`、ブリッジ停止時にワンショットへフォールバック）
 - [ ] TurtleBot3 の bringup 起動中に `robot.status` が `online` を返すことを確認（2026-11-10 時点では bringup 停止中で、`offline` を正しく返すことのみ確認）
 - [ ] Gadget 実行ユーザーの権限で `/usr/local/bin/turtlebot-muse-status` を実行し、JSON を確認
 - [ ] Muse から自然言語で `robot.status` を呼び出し、位置・向き・LiDAR 状態が表示されることを確認
@@ -68,9 +69,11 @@
 - [ ] Muse 実機で画像送信を確認
 - [x] `commands/robot.map.json` を追加
 - [ ] カメラトピックを実機で確認し、存在する場合のみ静止画取得を実装（なければ「未設定」と表示）
-- [ ] 常駐ブリッジ（rclpy ノード + Unix domain socket）と状態キャッシュ
-- [ ] 監視メトリクス：受信数、最終受信時刻、鮮度、TF 成功率、SDK 再接続回数、コマンド失敗率、スナップショット生成時間
-- [ ] `systemd/turtlebot3-muse-bridge.service` を作成
+- [x] 常駐ブリッジ（rclpy ノード + Unix domain socket）と状態キャッシュ。`robot.status` はブリッジを優先し、なければワンショット購読にフォールバック
+- [x] 監視メトリクス：トピックごとの受信数・最終受信からの秒数・受信レート、op ごとの要求数（`turtlebot-muse-bridge-ctl metrics`）
+- [ ] 監視メトリクスの残り：TF 成功率、SDK 再接続回数、コマンド失敗率、スナップショット生成時間
+- [x] `systemd/turtlebot3-muse-bridge.service` を作成（`musebot` で実行、`ProtectSystem=strict` などで制限）
+- [ ] 実機環境でブリッジを systemd で起動し、再起動・ロボット停止時の挙動を確認
 - [ ] 認可済み要求だけを非同期キューで画像送信
 - [x] 地図生成のテスト（占有値、回転、TF 欠落）
 
@@ -97,7 +100,7 @@
 
 ## ドキュメント
 
-- [ ] `docs/setup.md`
-- [ ] `docs/troubleshooting.md`
-- [ ] `docs/security.md`
+- [x] `docs/setup.md`
+- [x] `docs/troubleshooting.md`
+- [x] `docs/security.md`
 - [x] `docs/interfaces.md`

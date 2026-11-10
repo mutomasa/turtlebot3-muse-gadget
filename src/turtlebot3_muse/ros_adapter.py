@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
-from .config import AppConfig, MapConfig
+from .config import AppConfig, MapConfig, TopicConfig
 from .models import MapCollection, Pose2D, StatusCollection
 from .msg_convert import (
     battery_from_msg,
@@ -22,27 +22,10 @@ from .msg_convert import (
     scan_from_msg,
 )
 
+from .topic_monitor import TopicMonitor
+
 SPIN_STEP_S = 0.1
-
-
-class LatestMessageStore:
-    """Keeps the latest converted message per key, so freshness reflects the last receipt."""
-
-    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
-        self._items: dict[str, Any] = {}
-        self._clock = clock
-
-    def callback(self, key: str, convert: Callable[[Any, float], Any]) -> Callable[[Any], None]:
-        def _on_message(msg: Any) -> None:
-            self._items[key] = convert(msg, self._clock())
-
-        return _on_message
-
-    def has(self, *keys: str) -> bool:
-        return all(k in self._items for k in keys)
-
-    def get(self, key: str) -> Any:
-        return self._items.get(key)
+STATUS_KEYS = ("odom", "scan", "battery")
 
 
 @contextmanager
@@ -71,26 +54,34 @@ def spin_until(node: Any, done: Callable[[], bool], timeout_s: float) -> bool:
     return True
 
 
-def collect_status(cfg: AppConfig) -> StatusCollection:
+def subscribe_status_topics(node: Any, topics: TopicConfig, monitor: TopicMonitor) -> None:
+    """Subscribe /odom, /scan and /battery_state into ``monitor`` (shared by one-shot and bridge)."""
     from nav_msgs.msg import Odometry
     from rclpy.qos import qos_profile_sensor_data
     from sensor_msgs.msg import BatteryState, LaserScan
 
     # Best Effort subscribers are compatible with both Reliable and Best Effort publishers.
-    store = LatestMessageStore()
-    with ros_node("turtlebot3_muse_status") as node:
-        node.create_subscription(Odometry, cfg.topics.odom, store.callback("odom", odom_from_msg), qos_profile_sensor_data)
-        node.create_subscription(LaserScan, cfg.topics.scan, store.callback("scan", scan_from_msg), qos_profile_sensor_data)
-        node.create_subscription(
-            BatteryState, cfg.topics.battery, store.callback("battery", battery_from_msg), qos_profile_sensor_data
-        )
-        spin_until(node, lambda: store.has("odom", "scan", "battery"), cfg.status.wait_timeout_s)
+    monitor.watch(*STATUS_KEYS)
+    for msg_type, topic, key, convert in (
+        (Odometry, topics.odom, "odom", odom_from_msg),
+        (LaserScan, topics.scan, "scan", scan_from_msg),
+        (BatteryState, topics.battery, "battery", battery_from_msg),
+    ):
+        node.create_subscription(msg_type, topic, monitor.callback(key, convert), qos_profile_sensor_data)
+
+
+def status_collection(monitor: TopicMonitor, timed_out: bool = False) -> StatusCollection:
     return StatusCollection(
-        odom=store.get("odom"),
-        scan=store.get("scan"),
-        battery=store.get("battery"),
-        timed_out=not store.has("odom", "scan"),
+        odom=monitor.get("odom"), scan=monitor.get("scan"), battery=monitor.get("battery"), timed_out=timed_out
     )
+
+
+def collect_status(cfg: AppConfig) -> StatusCollection:
+    monitor = TopicMonitor()
+    with ros_node("turtlebot3_muse_status") as node:
+        subscribe_status_topics(node, cfg.topics, monitor)
+        spin_until(node, lambda: monitor.has(*STATUS_KEYS), cfg.status.wait_timeout_s)
+    return status_collection(monitor, timed_out=not monitor.has("odom", "scan"))
 
 
 def map_qos(transient_local: bool) -> Any:
@@ -116,7 +107,7 @@ def collect_map(cfg: AppConfig) -> MapCollection:
     from nav_msgs.msg import OccupancyGrid
     from tf2_ros import Buffer, TransformListener
 
-    store = LatestMessageStore()
+    store = TopicMonitor()
     with ros_node("turtlebot3_muse_map") as node:
         buffer = Buffer()
         _listener = TransformListener(buffer, node)  # keep a reference while spinning

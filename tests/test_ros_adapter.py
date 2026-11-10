@@ -1,16 +1,3 @@
-from turtlebot3_muse.ros_adapter import LatestMessageStore
-
-
-def test_keeps_latest_message_with_receive_time():
-    times = iter([1.0, 2.0])
-    store = LatestMessageStore(clock=lambda: next(times))
-    cb = store.callback("odom", lambda msg, t: (msg, t))
-    cb("a")
-    cb("b")
-    assert store.get("odom") == ("b", 2.0)
-    assert store.has("odom") and not store.has("odom", "scan")
-
-
 def test_ros_adapter_references_resolve():
     """Catch missing imports in lazily-executed ROS code paths."""
     import ast

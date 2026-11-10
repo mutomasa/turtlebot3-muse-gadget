@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Query the resident bridge: turtlebot-muse-bridge-ctl {status|metrics|ping}
+set -euo pipefail
+source "$(dirname "$(readlink -f "$0")")/ros_env.sh"
+mapfile -t config_args < <(turtlebot_muse_config_args)
+exec "$TURTLEBOT_MUSE_PYTHON" -m turtlebot3_muse.bridge_client "${config_args[@]}" "$@"

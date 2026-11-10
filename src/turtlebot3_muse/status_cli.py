@@ -11,6 +11,7 @@ from typing import Any, TextIO
 
 from .cli_common import ParamError, log, read_params, write_json
 from .config import DEFAULT_ROBOT_NAME, AppConfig, ConfigError, load_config
+from .ipc import IpcError, request
 from .mock_source import MOCK_SOURCE, mock_status
 from .models import StatusCollection
 from .status_service import build_error_status, build_status
@@ -25,6 +26,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=None, help="TOML config file")
     parser.add_argument("--mock", action="store_true", help="use mock data (output is labelled source=mock)")
+    parser.add_argument("--no-bridge", action="store_true", help="skip the resident bridge; always subscribe one-shot")
     return parser.parse_args(argv)
 
 
@@ -34,6 +36,23 @@ def select_collector(mock: bool) -> tuple[StatusCollector, str]:
     from .ros_adapter import collect_status
 
     return collect_status, LIVE_SOURCE
+
+
+def bridge_status(cfg: AppConfig) -> dict[str, Any] | None:
+    """Status from the resident bridge, or ``None`` if it is not available."""
+    path = Path(cfg.bridge.socket_path)
+    if not path.exists():
+        return None
+    try:
+        response = request(path, {"op": "status"}, cfg.bridge.request_timeout_s)
+    except (OSError, IpcError) as exc:
+        log(f"bridge unavailable, falling back to one-shot: {exc}")
+        return None
+    result = response.get("result")
+    if not response.get("ok") or not isinstance(result, dict) or "state" not in result:
+        log(f"bridge returned an error, falling back to one-shot: {response.get('error')}")
+        return None
+    return result
 
 
 def _error_code(exc: Exception) -> str:
@@ -51,6 +70,10 @@ def execute(args: argparse.Namespace, stdin: TextIO | None, collector: StatusCol
         cfg = load_config(args.config)
         robot = cfg.robot_name
         read_params(stdin)
+        if collector is None and not args.mock and not args.no_bridge:
+            cached = bridge_status(cfg)
+            if cached is not None:
+                return cached
         if collector is None:
             collector, source = select_collector(args.mock)
         with stdout_to_stderr():

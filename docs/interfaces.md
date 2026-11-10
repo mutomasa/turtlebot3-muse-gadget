@@ -4,7 +4,12 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 
 ## `robot.status`
 
-読取専用。`/odom`、`/scan`、`/battery_state` を Best Effort でワンショット購読します。`/odom` と `/scan` がそろうか、`status.wait_timeout_s`（既定 4 秒）が経過するまで待ちます。各トピックは最後に受信したメッセージを使います。
+読取専用。状態は次の順で取得します。
+
+1. **常駐ブリッジ**（`source: ros2_bridge`）：`bridge.socket_path` のソケットがあれば問い合わせます（`bridge.request_timeout_s`、既定 1 秒）。
+2. **ワンショット購読**（`source: ros2_live`）：ブリッジがない、または応答がない場合に、`/odom`、`/scan`、`/battery_state` を Best Effort で購読します。`/odom` と `/scan` がそろうか、`status.wait_timeout_s`（既定 4 秒）が経過するまで待ちます。
+
+どちらも、各トピックで最後に受信したメッセージを使います。`--no-bridge` を付けると常にワンショット購読します。
 
 ### `state`
 
@@ -12,7 +17,7 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 | --- | --- |
 | `online` | `/odom` と `/scan` を受信し、どちらも新鮮で、LiDAR に有効な距離値がある |
 | `degraded` | 何かは受信したが、上の条件を満たさない |
-| `offline` | 待機時間内に `/odom` も `/scan` も受信できなかった |
+| `offline` | 新しいデータがない（`/odom` も `/scan` も未受信、または受信済みのものがすべて古い） |
 | `unknown` | 収集処理そのものが失敗した（`error` を参照） |
 
 `/battery_state` は `state` の判定に使いません。
@@ -26,7 +31,7 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 
 | フィールド | 説明 |
 | --- | --- |
-| `source` | `ros2_live` または `mock` |
+| `source` | `ros2_bridge`、`ros2_live`、`mock` のいずれか |
 | `observed_at` | 応答を作った時刻（UTC、ISO 8601） |
 | `odom.x_m`, `odom.y_m`, `odom.yaw_deg` | `odom` フレームでの位置と向き。地図上の絶対位置ではない（`odom.note`） |
 | `odom.linear_x_mps`, `odom.angular_z_radps` | 速度 |
@@ -42,7 +47,7 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 
 | コード | 意味 |
 | --- | --- |
-| `timeout` | `/odom` と `/scan` がそろう前に待機時間が終わった |
+| `timeout` | `/odom` と `/scan` がそろう前に待機時間が終わった（ワンショット購読のみ） |
 | `no_odom`, `no_scan`, `no_battery` | 未受信 |
 | `no_valid_scan_ranges` | `/scan` を受信したが有効な距離値がない |
 | `stale_odom`, `stale_scan`, `stale_battery` | 受信したが古い |
@@ -75,3 +80,28 @@ Muse コマンドは標準入力で JSON オブジェクト（パラメータ）
 | `robot_outside_map` | ロボット位置が地図の外 |
 | `robot_pose_old` | TF の時刻が古い |
 | `send_failed` | `musegadget send-user-msg` が失敗した（`send_error` に詳細） |
+
+## 常駐ブリッジの IPC
+
+`/run/turtlebot-muse/bridge.sock`（Unix ドメインソケット、モード 0600）で、改行区切りの JSON を 1 往復だけやり取りします。
+
+要求：
+
+```json
+{"op": "status"}
+```
+
+応答：
+
+```json
+{"ok": true, "result": { ... }}
+{"ok": false, "error": "ValueError: unknown op: 'move'"}
+```
+
+| `op` | `result` |
+| --- | --- |
+| `status` | `robot.status` と同じ形式（`source: ros2_bridge`） |
+| `metrics` | `uptime_s`、トピックごとの `count`・`age_s`・`rate_hz`、`requests`（op ごとの要求数） |
+| `ping` | `{"pong": true}` |
+
+運用時は `turtlebot-muse-bridge-ctl {status|metrics|ping}` で確認できます。

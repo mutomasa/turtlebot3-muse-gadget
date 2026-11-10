@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Resident read-only ROS 2 bridge (run by systemd/turtlebot3-muse-bridge.service).
+set -euo pipefail
+source "$(dirname "$(readlink -f "$0")")/ros_env.sh"
+mapfile -t config_args < <(turtlebot_muse_config_args)
+exec "$TURTLEBOT_MUSE_PYTHON" -m turtlebot3_muse.bridge "${config_args[@]}" "$@"

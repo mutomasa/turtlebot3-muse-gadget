@@ -1,0 +1,34 @@
+[Unit]
+Description=TurtleBot3 Muse ROS 2 bridge (read-only status cache)
+Documentation=https://github.com/mutomasa/turtlebot3-muse-gadget
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Same unprivileged user as the Muse gadget service, so robot.status can reach the socket.
+User=musebot
+Group=musebot
+ExecStart=/opt/turtlebot-muse/bin/turtlebot-muse-bridge
+Restart=on-failure
+RestartSec=5
+
+# /run/turtlebot-muse (socket, 0750) and /var/log/turtlebot-muse (ROS logs)
+RuntimeDirectory=turtlebot-muse
+RuntimeDirectoryMode=0750
+LogsDirectory=turtlebot-muse
+Environment=ROS_LOG_DIR=/var/log/turtlebot-muse
+
+# Hardening: the bridge only subscribes to ROS 2 topics.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

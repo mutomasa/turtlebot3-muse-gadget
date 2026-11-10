@@ -2,8 +2,8 @@
 
 State rules (never report "online" on missing or old data):
 - online:   odom and scan received, fresh, and scan has valid ranges
-- degraded: something received, but not everything is healthy
-- offline:  nothing received within the wait timeout
+- degraded: some current data, but not everything is healthy
+- offline:  no current data (nothing received, or everything received is stale)
 - unknown:  collection itself failed (see ``build_error_status``)
 """
 
@@ -51,10 +51,10 @@ def assess_freshness(
     return Freshness(fresh, age, tuple(warnings))
 
 
-def classify_state(odom_ok: bool, scan_ok: bool, any_received: bool) -> str:
+def classify_state(odom_ok: bool, scan_ok: bool, any_fresh: bool) -> str:
     if odom_ok and scan_ok:
         return STATE_ONLINE
-    if any_received:
+    if any_fresh:
         return STATE_DEGRADED
     return STATE_OFFLINE
 
@@ -160,11 +160,11 @@ def build_status(
 
     odom_ok = odom_f is not None and odom_f.fresh
     scan_ok = scan_f is not None and scan_f.fresh and collection.scan.min_distance_m is not None
-    any_received = collection.odom is not None or collection.scan is not None
+    any_fresh = any(f is not None and f.fresh for f in (odom_f, scan_f))
     return {
         "robot": robot,
         "source": source,
-        "state": classify_state(odom_ok, scan_ok, any_received),
+        "state": classify_state(odom_ok, scan_ok, any_fresh),
         "observed_at": iso_utc(now_wall_s),
         "odom": odom_section(collection.odom, odom_f),
         "lidar": lidar_section(collection.scan, scan_f),

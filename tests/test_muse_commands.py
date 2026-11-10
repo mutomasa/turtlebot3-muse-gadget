@@ -14,7 +14,8 @@ REQUIRED_KEYS = {"robot", "source", "state", "observed_at", "odom", "lidar", "ba
 
 
 def args(*argv):
-    return status_cli.parse_args(list(argv))
+    # --no-bridge keeps tests independent of a bridge running on this machine
+    return status_cli.parse_args(["--no-bridge", *argv])
 
 
 @pytest.mark.parametrize("text, expected", [("", {}), ("  \n", {}), ('{"a": 1}', {"a": 1})])
@@ -75,7 +76,7 @@ def test_stdout_is_single_json_object_even_if_collector_prints(capfd, monkeypatc
 
     monkeypatch.setattr(status_cli, "select_collector", lambda mock: (noisy, "ros2_live"))
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
-    assert status_cli.main([]) == 0
+    assert status_cli.main(["--no-bridge"]) == 0
     out, err = capfd.readouterr()
     assert json.loads(out)["state"] == "offline"
     assert "noise from python" in err and "noise from native code" in err

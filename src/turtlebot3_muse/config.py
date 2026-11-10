@@ -63,12 +63,22 @@ class MuseConfig:
 
 
 @dataclass(frozen=True)
+class BridgeConfig:
+    socket_path: str = "/run/turtlebot-muse/bridge.sock"
+    request_timeout_s: float = 1.0
+
+    def __post_init__(self) -> None:
+        _require_positive(self, ("request_timeout_s",))
+
+
+@dataclass(frozen=True)
 class AppConfig:
     robot_name: str = DEFAULT_ROBOT_NAME
     topics: TopicConfig = field(default_factory=TopicConfig)
     status: StatusConfig = field(default_factory=StatusConfig)
     map: MapConfig = field(default_factory=MapConfig)
     muse: MuseConfig = field(default_factory=MuseConfig)
+    bridge: BridgeConfig = field(default_factory=BridgeConfig)
 
 
 _SECTIONS: dict[str, type] = {
@@ -76,6 +86,7 @@ _SECTIONS: dict[str, type] = {
     "status": StatusConfig,
     "map": MapConfig,
     "muse": MuseConfig,
+    "bridge": BridgeConfig,
 }
 
 
